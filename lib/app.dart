@@ -9,24 +9,30 @@ import 'features/chat/screens/chat_screen.dart';
 import 'features/consent/controllers/consent_controller.dart';
 import 'features/consent/screens/photo_consent_screen.dart';
 import 'features/profile/screens/profile_screen.dart';
+import 'features/settings/controllers/theme_controller.dart';
+import 'features/settings/screens/settings_screen.dart';
 import 'features/subscription/screens/paywall_screen.dart';
 import 'routes/app_routes.dart';
 
-class HairstyleAiApp extends StatelessWidget {
+class HairstyleAiApp extends ConsumerWidget {
   const HairstyleAiApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeControllerProvider).valueOrNull ?? ThemeMode.system;
+
     return MaterialApp(
       title: 'AI Hairstyle',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
+      themeMode: themeMode,
       home: const RootGate(),
       routes: {
         AppRoutes.register: (_) => const RegisterScreen(),
         AppRoutes.paywall: (_) => const PaywallScreen(),
         AppRoutes.profile: (_) => const ProfileScreen(),
+        AppRoutes.settings: (_) => const SettingsScreen(),
       },
     );
   }

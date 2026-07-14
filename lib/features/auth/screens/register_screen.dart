@@ -34,10 +34,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _infoMessage = null;
     });
     try {
-      await ref.read(authRepositoryProvider).signUpWithEmail(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+      final hasSession =
+          await ref.read(authRepositoryProvider).signUpWithEmail(
+                email: _emailController.text.trim(),
+                password: _passwordController.text,
+              );
+      if (hasSession) {
+        // Email confirmation is disabled in this Supabase project, so
+        // sign-up already returned an active session. Pop back to the
+        // root gate, which will pick up the new auth state and move on to
+        // the consent/chat screen.
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
       setState(() {
         _infoMessage =
             'Проверьте почту и подтвердите email, затем войдите в аккаунт.';

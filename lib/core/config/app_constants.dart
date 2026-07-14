@@ -18,4 +18,6 @@ class AppConstants {
   };
 
   static const String photoConsentPrefsKey = 'photo_consent_accepted_v1';
+
+  static const String themeModePrefsKey = 'theme_mode_v1';
 }

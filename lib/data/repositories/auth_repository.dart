@@ -13,14 +13,18 @@ class AuthRepository {
 
   User? get currentUser => SupabaseService.currentUser;
 
-  Future<void> signUpWithEmail({
+  /// Returns true if sign-up produced an active session (email confirmation
+  /// disabled in the Supabase project), false if the user still needs to
+  /// confirm their email before they can sign in.
+  Future<bool> signUpWithEmail({
     required String email,
     required String password,
   }) async {
-    await SupabaseService.client.auth.signUp(
+    final response = await SupabaseService.client.auth.signUp(
       email: email,
       password: password,
     );
+    return response.session != null;
   }
 
   Future<void> signInWithEmail({

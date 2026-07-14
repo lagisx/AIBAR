@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/services/image_picker_service.dart';
 import '../../../routes/app_routes.dart';
+import '../../../shared_widgets/app_drawer.dart';
 import '../controllers/chat_controller.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/prompt_input_bar.dart';
@@ -67,6 +68,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final messagesAsync = ref.watch(chatControllerProvider);
 
     return Scaffold(
+      drawer: const AppDrawer(),
       appBar: AppBar(
         title: const Text('AI Hairstyle'),
         actions: [
