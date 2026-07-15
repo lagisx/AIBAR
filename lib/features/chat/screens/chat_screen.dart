@@ -7,6 +7,7 @@ import '../../../data/services/image_picker_service.dart';
 import '../../../routes/app_routes.dart';
 import '../../../shared_widgets/app_drawer.dart';
 import '../controllers/chat_controller.dart';
+import '../widgets/chat_sessions_drawer.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/prompt_input_bar.dart';
 
@@ -24,7 +25,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _sending = false;
 
   Future<void> _attachPhoto() async {
-    final photo = await _imagePickerService.pickFromGallery();
+    final source = await showModalBottomSheet<_PhotoSource>(
+      context: context,
+      builder: (context) => const _PhotoSourceSheet(),
+    );
+    if (source == null) return;
+
+    final photo = source == _PhotoSource.camera
+        ? await _imagePickerService.pickFromCamera()
+        : await _imagePickerService.pickFromGallery();
     if (photo != null) setState(() => _attachedPhoto = photo);
   }
 
@@ -63,18 +72,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  void _startNewChat() {
+    ref.read(chatControllerProvider.notifier).startNewChat();
+  }
+
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(chatControllerProvider);
 
     return Scaffold(
       drawer: const AppDrawer(),
+      endDrawer: const ChatSessionsDrawer(),
       appBar: AppBar(
         title: const Text('AI Hairstyle'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.workspace_premium_outlined),
-            onPressed: () => Navigator.of(context).pushNamed(AppRoutes.paywall),
+            icon: const Icon(Icons.add_comment_outlined),
+            tooltip: 'Новый чат',
+            onPressed: _startNewChat,
+          ),
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.forum_outlined),
+              tooltip: 'Мои чаты',
+              onPressed: () => Scaffold.of(context).openEndDrawer(),
+            ),
           ),
         ],
       ),
@@ -113,6 +135,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             onRemovePhoto: () => setState(() => _attachedPhoto = null),
             onSend: _send,
             sending: _sending,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _PhotoSource { camera, gallery }
+
+class _PhotoSourceSheet extends StatelessWidget {
+  const _PhotoSourceSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo_camera_outlined),
+            title: const Text('Сделать фото'),
+            onTap: () => Navigator.of(context).pop(_PhotoSource.camera),
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined),
+            title: const Text('Выбрать из галереи'),
+            onTap: () => Navigator.of(context).pop(_PhotoSource.gallery),
           ),
         ],
       ),

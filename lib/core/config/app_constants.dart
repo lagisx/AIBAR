@@ -1,5 +1,6 @@
 class AppConstants {
   static const String chatMessagesTable = 'chat_messages';
+  static const String chatSessionsTable = 'chat_sessions';
   static const String generationRequestsTable = 'generation_requests';
   static const String subscriptionsTable = 'subscriptions';
   static const String profilesTable = 'profiles';

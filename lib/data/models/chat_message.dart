@@ -34,6 +34,7 @@ String messageTypeToString(MessageType type) {
 class ChatMessage {
   final String id;
   final String userId;
+  final String sessionId;
   final MessageRole role;
   final MessageType type;
   final String? content;
@@ -44,6 +45,7 @@ class ChatMessage {
   const ChatMessage({
     required this.id,
     required this.userId,
+    required this.sessionId,
     required this.role,
     required this.type,
     this.content,
@@ -71,6 +73,7 @@ class ChatMessage {
     return ChatMessage(
       id: map['id'] as String,
       userId: map['user_id'] as String,
+      sessionId: map['session_id'] as String,
       role: _roleFromString(map['role'] as String),
       type: type,
       content: type == MessageType.imageResult ? null : content,

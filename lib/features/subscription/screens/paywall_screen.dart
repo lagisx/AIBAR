@@ -5,9 +5,6 @@ import '../../../data/models/subscription.dart';
 import '../controllers/subscription_controller.dart';
 import '../widgets/plan_card.dart';
 
-/// MVP paywall. The "Оформить" (subscribe) button only writes the mock tier
-/// into `subscriptions.tier` in Supabase — no real payment provider is wired
-/// up yet (see project plan section 7 / 11).
 class PaywallScreen extends ConsumerWidget {
   const PaywallScreen({super.key});
 

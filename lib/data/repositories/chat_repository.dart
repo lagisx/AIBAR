@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/config/app_constants.dart';
 import '../models/chat_message.dart';
+import '../models/chat_session.dart';
 import '../services/ai_generation_service.dart';
 import '../services/supabase_service.dart';
 
@@ -11,34 +12,55 @@ class ChatRepository {
   final AiGenerationService _aiGenerationService = AiGenerationService();
   final _uuid = const Uuid();
 
+  static const int messagePageSize = 50;
+
   String get _userId {
     final id = SupabaseService.currentUser?.id;
     if (id == null) throw Exception('Пользователь не авторизован');
     return id;
   }
 
-  Future<List<ChatMessage>> fetchHistory({int limit = 100}) async {
-    final rows = await SupabaseService.client
+  Stream<List<ChatSession>> watchSessions() {
+    return SupabaseService.client
+        .from(AppConstants.chatSessionsTable)
+        .stream(primaryKey: ['id'])
+        .eq('user_id', _userId)
+        .order('last_message_at', ascending: false)
+        .map((rows) => rows.map(ChatSession.fromMap).toList());
+  }
+
+  /// Loads the most recent page of messages in a session. Pass [before] to
+  /// load an older page (infinite scroll) instead of re-fetching everything.
+  Future<List<ChatMessage>> fetchMessages(
+    String sessionId, {
+    DateTime? before,
+  }) async {
+    var query = SupabaseService.client
         .from(AppConstants.chatMessagesTable)
         .select()
-        .eq('user_id', _userId)
-        .order('created_at')
-        .limit(limit);
+        .eq('session_id', sessionId);
+
+    if (before != null) {
+      query = query.lt('created_at', before.toIso8601String());
+    }
+
+    final rows = await query
+        .order('created_at', ascending: false)
+        .limit(messagePageSize);
 
     return (rows as List)
         .map((row) => ChatMessage.fromMap(row as Map<String, dynamic>))
+        .toList()
+        .reversed
         .toList();
   }
 
-  /// Subscribes to new rows inserted into `chat_messages` for the current
-  /// user, so assistant replies show up in the chat as soon as the
-  /// `generate-hairstyle` Edge Function writes them.
-  Stream<ChatMessage> watchNewMessages() {
+  Stream<ChatMessage> watchNewMessages(String sessionId) {
     final seenIds = <String>{};
     return SupabaseService.client
         .from(AppConstants.chatMessagesTable)
         .stream(primaryKey: ['id'])
-        .eq('user_id', _userId)
+        .eq('session_id', sessionId)
         .order('created_at')
         .map((rows) => rows.map(ChatMessage.fromMap).toList())
         .expand((messages) => messages)
@@ -55,19 +77,40 @@ class ChatRepository {
         .getPublicUrl(path);
   }
 
-  /// Sends the user's photo + prompt: creates the `chat_messages` /
-  /// `generation_requests` rows and triggers the `generate-hairstyle`
-  /// Edge Function, which does the actual AI call server-side.
-  Future<void> sendGenerationRequest({
+  Future<ChatSession> _createSession(String firstPromptText) async {
+    const maxTitleLength = 60;
+    final title = firstPromptText.length > maxTitleLength
+        ? '${firstPromptText.substring(0, maxTitleLength)}…'
+        : firstPromptText;
+
+    final row = await SupabaseService.client
+        .from(AppConstants.chatSessionsTable)
+        .insert({'user_id': _userId, 'title': title})
+        .select()
+        .single();
+    return ChatSession.fromMap(row);
+  }
+
+  /// Sends a photo + prompt. If [sessionId] is null this is the first
+  /// message of a new conversation, so a `chat_sessions` row is created
+  /// right here — a session never appears in the sessions list before the
+  /// user has actually written something in it.
+  ///
+  /// Returns the session id the message was sent into.
+  Future<String> sendGenerationRequest({
     required File photo,
     required String promptText,
+    String? sessionId,
   }) async {
+    final session =
+        sessionId ?? (await _createSession(promptText)).id;
     final photoUrl = await uploadSourcePhoto(photo);
 
     final messageRow = await SupabaseService.client
         .from(AppConstants.chatMessagesTable)
         .insert({
           'user_id': _userId,
+          'session_id': session,
           'role': 'user',
           'type': 'image_prompt',
           'content': promptText,
@@ -88,6 +131,9 @@ class ChatRepository {
       sourcePhotoUrl: photoUrl,
       promptText: promptText,
       messageId: messageRow['id'] as String,
+      sessionId: session,
     );
+
+    return session;
   }
 }

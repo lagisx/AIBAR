@@ -63,10 +63,11 @@ Deno.serve(async (req) => {
     // Service-role client for privileged reads/writes (bypasses RLS).
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
-    const { source_photo_url, prompt_text, message_id } = await req.json();
-    if (!source_photo_url || !prompt_text) {
+    const { source_photo_url, prompt_text, message_id, session_id } =
+      await req.json();
+    if (!source_photo_url || !prompt_text || !session_id) {
       return jsonResponse(
-        { error: 'source_photo_url and prompt_text are required' },
+        { error: 'source_photo_url, prompt_text and session_id are required' },
         400,
       );
     }
@@ -147,6 +148,7 @@ Deno.serve(async (req) => {
       .from('chat_messages')
       .insert({
         user_id: user.id,
+        session_id,
         role: 'assistant',
         type: 'image_result',
         content: JSON.stringify(resultUrls),
@@ -154,6 +156,11 @@ Deno.serve(async (req) => {
     if (assistantMsgError) {
       return jsonResponse({ error: assistantMsgError.message }, 500);
     }
+
+    await admin
+      .from('chat_sessions')
+      .update({ last_message_at: new Date().toISOString() })
+      .eq('id', session_id);
 
     return jsonResponse({ result_urls: resultUrls });
   } catch (error) {

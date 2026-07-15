@@ -18,6 +18,7 @@ class AiGenerationService {
     required String sourcePhotoUrl,
     required String promptText,
     required String messageId,
+    required String sessionId,
   }) async {
     try {
       final response = await SupabaseService.client.functions.invoke(
@@ -26,6 +27,7 @@ class AiGenerationService {
           'source_photo_url': sourcePhotoUrl,
           'prompt_text': promptText,
           'message_id': messageId,
+          'session_id': sessionId,
         },
       );
 

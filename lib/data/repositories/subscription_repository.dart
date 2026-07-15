@@ -2,8 +2,6 @@ import '../../core/config/app_constants.dart';
 import '../models/subscription.dart';
 import '../services/supabase_service.dart';
 
-/// MVP-only repository: subscription tier is a mock stored directly in the
-/// DB. Real billing (RevenueCat / App Store / Google Play) is a later step.
 class SubscriptionRepository {
   String get _userId {
     final id = SupabaseService.currentUser?.id;
