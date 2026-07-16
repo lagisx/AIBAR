@@ -156,6 +156,10 @@ class _PresetCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    // NOTE: this card must render at an identical size whether it is
+    // selected or not - the border and trailing checkmark are always laid
+    // out, just painted transparently/invisibly when inactive. This avoids
+    // the tiles growing/shrinking (and jumping) on selection.
     return Material(
       color: selected
           ? colors.primaryContainer.withValues(alpha: 0.5)
@@ -168,9 +172,10 @@ class _PresetCard extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: selected
-                ? Border.all(color: colors.primary, width: 1.5)
-                : null,
+            border: Border.all(
+              color: selected ? colors.primary : Colors.transparent,
+              width: 1.5,
+            ),
           ),
           child: Row(
             children: [
@@ -210,7 +215,11 @@ class _PresetCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (selected) Icon(Icons.check_circle, color: colors.primary),
+              const SizedBox(width: AppSpacing.sm),
+              Icon(
+                Icons.check_circle,
+                color: selected ? colors.primary : Colors.transparent,
+              ),
             ],
           ),
         ),

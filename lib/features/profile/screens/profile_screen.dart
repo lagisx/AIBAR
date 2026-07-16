@@ -7,6 +7,7 @@ import '../../../core/utils/error_translator.dart';
 import '../../../data/models/subscription.dart';
 import '../../../routes/app_routes.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../chat/controllers/chat_controller.dart';
 import '../../settings/controllers/theme_controller.dart';
 import '../../subscription/controllers/subscription_controller.dart';
 import '../controllers/gender_controller.dart';
@@ -45,6 +46,49 @@ class ProfileScreen extends ConsumerWidget {
     );
     if (gender != null) {
       await ref.read(genderControllerProvider.notifier).setGender(gender);
+    }
+  }
+
+  Future<void> _confirmClearAllChats(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Очистить все чаты?'),
+        content: const Text(
+          'Вся история переписки будет удалена безвозвратно. Это действие нельзя отменить.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              'Очистить',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(chatControllerProvider.notifier).clearAllChats();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Все чаты удалены')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось очистить чаты: $e')),
+        );
+      }
     }
   }
 
@@ -189,6 +233,27 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ),
             ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Text(
+              'Данные',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ListTile(
+            leading: Icon(
+              Icons.delete_sweep_outlined,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            title: Text(
+              'Очистить все чаты',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            subtitle: const Text('Удалить всю историю переписки'),
+            onTap: () => _confirmClearAllChats(context, ref),
           ),
           const SizedBox(height: AppSpacing.xl),
           OutlinedButton.icon(

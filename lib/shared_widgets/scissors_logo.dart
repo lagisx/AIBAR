@@ -148,9 +148,18 @@ class _ScissorsPainter extends CustomPainter {
     required this.accent,
   });
 
+  // Fixed spread angle (radians) for the handles/rings. This is
+  // intentionally NOT tied to the animated blade `halfAngle`: the rings sit
+  // fairly close to the pivot, so if they opened/closed with the same small
+  // angle as the blades they'd overlap at low angles. Keeping the handle
+  // spread constant (and wide enough) guarantees the two rings never touch,
+  // no matter what the blades are doing.
+  static const double _handleSpread = 0.34;
+
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.width / 100;
+    final center = Offset(size.width / 2, size.height / 2);
     final pivot = Offset(50 * s, 55 * s);
 
     final fill = Paint()
@@ -162,11 +171,19 @@ class _ScissorsPainter extends CustomPainter {
       ..strokeWidth = 5.5 * s
       ..strokeCap = StrokeCap.round;
 
+    // Lay the whole icon out horizontally (blades pointing sideways,
+    // handles/rings on the opposite side) instead of the original
+    // vertical orientation.
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(math.pi / 2);
+    canvas.translate(-center.dx, -center.dy);
+
     void drawHalf(int dir) {
+      // Blade: animates with the snip angle.
       canvas.save();
       canvas.translate(pivot.dx, pivot.dy);
       canvas.rotate(halfAngle * dir);
-
       final blade = Path()
         ..moveTo(0, 2 * s)
         ..quadraticBezierTo(-6 * s, -13 * s, -1.8 * s, -34 * s)
@@ -174,10 +191,14 @@ class _ScissorsPainter extends CustomPainter {
         ..quadraticBezierTo(6 * s, -13 * s, 0, 2 * s)
         ..close();
       canvas.drawPath(blade, fill);
+      canvas.restore();
 
-      canvas.drawLine(Offset(0, 2 * s), Offset(0, 11 * s), stroke);
-      canvas.drawCircle(Offset(0, 21 * s), 9.5 * s, stroke);
-
+      // Handle + ring: fixed spread so the rings stay clear of each other.
+      canvas.save();
+      canvas.translate(pivot.dx, pivot.dy);
+      canvas.rotate(_handleSpread * dir);
+      canvas.drawLine(Offset(0, 2 * s), Offset(0, 12 * s), stroke);
+      canvas.drawCircle(Offset(0, 25 * s), 7.5 * s, stroke);
       canvas.restore();
     }
 
@@ -186,6 +207,8 @@ class _ScissorsPainter extends CustomPainter {
 
     canvas.drawCircle(pivot, 4.6 * s, Paint()..color = color);
     canvas.drawCircle(pivot, 2 * s, Paint()..color = accent);
+
+    canvas.restore();
   }
 
   @override
