@@ -16,7 +16,7 @@ class AppConstants {
 
   static const Map<String, int> tierRequestLimits = {
     'free': 3,
-    'pro': 100,
+    'pro': 3,
     'max': 1000,
   };
 

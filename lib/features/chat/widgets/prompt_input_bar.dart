@@ -1,9 +1,21 @@
 import 'dart:io';
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+
+const _promptHints = [
+  'Опишите причёску или бороду',
+  'Например: "сделай короткий fade"',
+  'Например: "добавь чёлку и локоны"',
+  'Например: "покрась в пепельный блонд"',
+  'Например: "хочу дерзкий undercut"',
+  'Например: "сделай гладкий боб"',
+  'Например: "афро-кудри и объём"',
+  'Например: "омбре с розовым оттенком"',
+];
 
 class PromptInputBar extends StatefulWidget {
   final File? attachedPhoto;
@@ -32,6 +44,8 @@ class PromptInputBar extends StatefulWidget {
 class PromptInputBarState extends State<PromptInputBar> {
   final _controller = TextEditingController();
   bool _hasText = false;
+  late final String _hintText =
+      _promptHints[Random().nextInt(_promptHints.length)];
 
   @override
   void initState() {
@@ -110,7 +124,7 @@ class PromptInputBarState extends State<PromptInputBar> {
                           textCapitalization: TextCapitalization.sentences,
                           style: const TextStyle(fontSize: 16, height: 1.35),
                           decoration: InputDecoration(
-                            hintText: 'Опишите причёску или бороду',
+                            hintText: _hintText,
                             hintStyle: TextStyle(
                               fontSize: 16,
                               color: colors.onSurfaceVariant.withValues(

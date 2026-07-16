@@ -234,6 +234,7 @@ class ChatController extends AsyncNotifier<List<ChatMessage>> {
       ref.invalidate(subscriptionControllerProvider);
       return (messageSent: true, error: null);
     } on GenerationLimitExceededException catch (e) {
+      ref.invalidate(subscriptionControllerProvider);
       return (messageSent: true, error: e.message);
     } catch (e, stackTrace) {
       return (

@@ -242,108 +242,113 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ],
       ),
       extendBody: true,
-      body: Stack(
+      body: Column(
         children: [
           if (hasReachedLimit)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: _LimitReachedBanner(
-                onTap: () => Navigator.of(context).pushNamed(AppRoutes.paywall),
-              ),
+            _LimitReachedBanner(
+              subscription: subscription!,
+              onTap: () => Navigator.of(context).pushNamed(AppRoutes.paywall),
             ),
-          Positioned(
-            top: hasReachedLimit ? 48 : 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: messagesAsync.when(
-              data: (messages) {
-                if (messages.isEmpty) {
-                  return const _EmptyChatState();
-                }
-                final itemCount = messages.length + (_sending ? 1 : 0);
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(0, 12, 0, 96),
-                  itemCount: itemCount,
-                  itemBuilder: (context, index) {
-                    if (index == messages.length) {
-                      return const GeneratingBubble(
-                        key: ValueKey('generating'),
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: messagesAsync.when(
+                    data: (messages) {
+                      if (messages.isEmpty) {
+                        return _EmptyChatState(
+                          onPromptTap: (prompt) =>
+                              _promptBarKey.currentState?.fillPrompt(prompt),
+                        );
+                      }
+                      final itemCount = messages.length + (_sending ? 1 : 0);
+                      return ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.fromLTRB(0, 12, 0, 96),
+                        itemCount: itemCount,
+                        itemBuilder: (context, index) {
+                          if (index == messages.length) {
+                            return const GeneratingBubble(
+                              key: ValueKey('generating'),
+                            );
+                          }
+                          final message = messages[index];
+                          final isImageResult =
+                              message.type == MessageType.imageResult;
+                          final source = isImageResult
+                              ? _findSourceForResult(messages, index)
+                              : (photoUrl: null, promptText: null);
+                          return MessageBubble(
+                            key: ValueKey(message.id),
+                            message: message,
+                            sourcePhotoUrl: source.photoUrl,
+                            isPro: isPro,
+                            isRegenerating:
+                                _regeneratingMessageId == message.id,
+                            onRegenerate:
+                                (isImageResult &&
+                                    source.photoUrl != null &&
+                                    source.promptText != null)
+                                ? () => _regenerate(
+                                    message.id,
+                                    source.photoUrl!,
+                                    source.promptText!,
+                                  )
+                                : null,
+                          );
+                        },
                       );
-                    }
-                    final message = messages[index];
-                    final isImageResult =
-                        message.type == MessageType.imageResult;
-                    final source = isImageResult
-                        ? _findSourceForResult(messages, index)
-                        : (photoUrl: null, promptText: null);
-                    return MessageBubble(
-                      key: ValueKey(message.id),
-                      message: message,
-                      sourcePhotoUrl: source.photoUrl,
-                      isPro: isPro,
-                      isRegenerating: _regeneratingMessageId == message.id,
-                      onRegenerate:
-                          (isImageResult &&
-                              source.photoUrl != null &&
-                              source.promptText != null)
-                          ? () => _regenerate(
-                              message.id,
-                              source.photoUrl!,
-                              source.promptText!,
-                            )
-                          : null,
-                    );
-                  },
-                );
-              },
-              loading: () => const ChatSkeletonLoader(),
-              error: (error, stackTrace) => Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      friendlyErrorMessage(
-                        error,
-                        context: 'chat',
-                        stackTrace: stackTrace,
+                    },
+                    loading: () => const ChatSkeletonLoader(),
+                    error: (error, stackTrace) => Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            friendlyErrorMessage(
+                              error,
+                              context: 'chat',
+                              stackTrace: stackTrace,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () =>
+                                ref.invalidate(chatControllerProvider),
+                            child: const Text('Повторить'),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: () => ref.invalidate(chatControllerProvider),
-                      child: const Text('Повторить'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_selectedStyleIds.isNotEmpty)
-                  _SelectedStylesRow(
-                    styles: _selectedStyles,
-                    onRemove: (preset) =>
-                        setState(() => _selectedStyleIds.remove(preset.id)),
                   ),
-                PromptInputBar(
-                  key: _promptBarKey,
-                  attachedPhoto: _attachedPhoto,
-                  onAttachPhoto: _attachPhoto,
-                  onRemovePhoto: () => setState(() => _attachedPhoto = null),
-                  onOpenStylePresets: _openStylePresets,
-                  onSend: _send,
-                  sending: _sending,
-                  onCancel: _cancelGeneration,
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_selectedStyleIds.isNotEmpty)
+                        _SelectedStylesRow(
+                          styles: _selectedStyles,
+                          onRemove: (preset) => setState(
+                            () => _selectedStyleIds.remove(preset.id),
+                          ),
+                        ),
+                      PromptInputBar(
+                        key: _promptBarKey,
+                        attachedPhoto: _attachedPhoto,
+                        onAttachPhoto: _attachPhoto,
+                        onRemovePhoto: () =>
+                            setState(() => _attachedPhoto = null),
+                        onOpenStylePresets: _openStylePresets,
+                        onSend: _send,
+                        sending: _sending,
+                        onCancel: _cancelGeneration,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -390,8 +395,32 @@ class _SelectedStylesRow extends StatelessWidget {
   }
 }
 
-class _EmptyChatState extends StatelessWidget {
-  const _EmptyChatState();
+const _emptyStateExamplePrompts = [
+  'Сделай мне красные волосы',
+  'Хочу короткую стрижку fade',
+  'Добавь чёлку и лёгкие локоны',
+  'Покрась волосы в пепельный блонд',
+  'Сделай афро-кудри',
+  'Хочу гладкий боб до плеч',
+  'Добавь омбре с розовым оттенком',
+  'Сделай длинные волнистые волосы',
+  'Хочу дерзкий undercut',
+  'Покрась волосы в платиновый блонд',
+];
+
+class _EmptyChatState extends StatefulWidget {
+  final ValueChanged<String> onPromptTap;
+
+  const _EmptyChatState({required this.onPromptTap});
+
+  @override
+  State<_EmptyChatState> createState() => _EmptyChatStateState();
+}
+
+class _EmptyChatStateState extends State<_EmptyChatState> {
+  late final List<String> _shownPrompts = (List<String>.from(
+    _emptyStateExamplePrompts,
+  )..shuffle()).take(4).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -423,10 +452,26 @@ class _EmptyChatState extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Прикрепите фото и опишите причёску или бороду — '
-              'сгенерирую несколько вариантов.',
+              'Выберите идею или опишите свою',
               textAlign: TextAlign.center,
-              style: TextStyle(color: colors.onSurfaceVariant),
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              alignment: WrapAlignment.center,
+              children: _shownPrompts.map((prompt) {
+                return ActionChip(
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor: colors.surfaceContainerHigh,
+                  side: BorderSide(
+                    color: colors.outlineVariant.withValues(alpha: 0.4),
+                  ),
+                  label: Text(prompt, style: const TextStyle(fontSize: 13)),
+                  onPressed: () => widget.onPromptTap(prompt),
+                );
+              }).toList(),
             ),
           ],
         ),
@@ -463,9 +508,33 @@ class _PhotoSourceSheet extends StatelessWidget {
 }
 
 class _LimitReachedBanner extends StatelessWidget {
+  final Subscription subscription;
   final VoidCallback onTap;
 
-  const _LimitReachedBanner({required this.onTap});
+  const _LimitReachedBanner({required this.subscription, required this.onTap});
+
+  String get _message {
+    if (subscription.tier == SubscriptionTier.free) {
+      return 'Лимиты закончились. Обновитесь до Pro или Max, чтобы продолжить';
+    }
+    return 'Вы достигли лимита. Следующее обновление ${_resetInWords(subscription.periodResetAt)}.';
+  }
+
+  static String _resetInWords(DateTime resetAt) {
+    final remaining = resetAt.difference(DateTime.now());
+    if (remaining.inHours <= 0) return 'уже сегодня';
+    final days = (remaining.inHours / 24).ceil();
+    return 'через $days ${_pluralDays(days)}';
+  }
+
+  static String _pluralDays(int n) {
+    final mod100 = n % 100;
+    final mod10 = n % 10;
+    if (mod100 >= 11 && mod100 <= 14) return 'дней';
+    if (mod10 == 1) return 'день';
+    if (mod10 >= 2 && mod10 <= 4) return 'дня';
+    return 'дней';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -489,7 +558,7 @@ class _LimitReachedBanner extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  'Лимиты закончились. Обновитесь до Pro или Max, чтобы продолжить',
+                  _message,
                   style: TextStyle(
                     fontSize: 13,
                     color: colors.onErrorContainer,

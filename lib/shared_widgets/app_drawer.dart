@@ -113,14 +113,17 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.xs,
-              ),
-              child: const _SectionLabel('Чаты'),
-            ),
+  padding: const EdgeInsets.fromLTRB(
+    AppSpacing.lg,
+    AppSpacing.md,
+    AppSpacing.md,
+    AppSpacing.xs,
+  ),
+  child: const Align(
+    alignment: Alignment.centerLeft,
+    child: _SectionLabel('Чаты'),
+  ),
+),
             Expanded(
               child: sessionsAsync.when(
                 data: (allSessions) {

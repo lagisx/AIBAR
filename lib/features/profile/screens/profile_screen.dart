@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -161,8 +163,7 @@ class ProfileScreen extends ConsumerWidget {
                   onTap: () =>
                       Navigator.of(context).pushNamed(AppRoutes.paywall),
                 ),
-                if (subscription.tier != SubscriptionTier.free)
-                  _RequestsRemainingTile(subscription: subscription),
+                _RequestsRemainingTile(subscription: subscription),
               ],
             ),
             loading: () => const ListTile(title: Text('Загрузка тарифа...')),
@@ -283,14 +284,100 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class _RequestsRemainingTile extends ConsumerWidget {
+class _RequestsRemainingTile extends ConsumerStatefulWidget {
   final Subscription subscription;
 
   const _RequestsRemainingTile({required this.subscription});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final limit = AppConstants.tierRequestLimits[subscription.tier.name] ?? 1;
+  ConsumerState<_RequestsRemainingTile> createState() =>
+      _RequestsRemainingTileState();
+}
+
+class _RequestsRemainingTileState
+    extends ConsumerState<_RequestsRemainingTile> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    // Пересчитываем текст обратного отсчёта раз в минуту, без похода в сеть.
+    _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  static String _pluralDays(int n) {
+    final mod100 = n % 100;
+    final mod10 = n % 10;
+    if (mod100 >= 11 && mod100 <= 14) return 'дней';
+    if (mod10 == 1) return 'день';
+    if (mod10 >= 2 && mod10 <= 4) return 'дня';
+    return 'дней';
+  }
+
+  static String _pluralHours(int n) {
+    final mod100 = n % 100;
+    final mod10 = n % 10;
+    if (mod100 >= 11 && mod100 <= 14) return 'часов';
+    if (mod10 == 1) return 'час';
+    if (mod10 >= 2 && mod10 <= 4) return 'часа';
+    return 'часов';
+  }
+
+  static String _pluralMinutes(int n) {
+    final mod100 = n % 100;
+    final mod10 = n % 10;
+    if (mod100 >= 11 && mod100 <= 14) return 'минут';
+    if (mod10 == 1) return 'минута';
+    if (mod10 >= 2 && mod10 <= 4) return 'минуты';
+    return 'минут';
+  }
+
+  static String _twoDigits(int n) => n.toString().padLeft(2, '0');
+
+  String _resetLabel(DateTime resetAt) {
+    final now = DateTime.now();
+    final remaining = resetAt.difference(now);
+
+    if (remaining.isNegative) return 'Лимит обновится с минуты на минуту';
+
+    final time =
+        '${_twoDigits(resetAt.hour)}:${_twoDigits(resetAt.minute)}';
+    final isToday =
+        resetAt.year == now.year &&
+        resetAt.month == now.month &&
+        resetAt.day == now.day;
+
+    if (remaining.inDays >= 1) {
+      final days = remaining.inDays;
+      return 'Обновится через $days ${_pluralDays(days)}';
+    }
+    if (remaining.inHours >= 1) {
+      final hours = remaining.inHours;
+      final minutes = remaining.inMinutes % 60;
+      final relative = minutes == 0
+          ? '$hours ${_pluralHours(hours)}'
+          : '$hours ${_pluralHours(hours)} $minutes ${_pluralMinutes(minutes)}';
+      return isToday
+          ? 'Обновится через $relative (сегодня в $time)'
+          : 'Обновится через $relative (в $time)';
+    }
+    final minutes = remaining.inMinutes.clamp(1, 59);
+    return 'Обновится через $minutes ${_pluralMinutes(minutes)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final subscription = widget.subscription;
+    final limit =
+        AppConstants.tierRequestLimits[subscription.tier.name] ?? 1;
     final used = subscription.requestsUsedThisPeriod.clamp(0, limit);
     final percent = (used / limit * 100).round();
     final colors = Theme.of(context).colorScheme;
@@ -336,6 +423,14 @@ class _RequestsRemainingTile extends ConsumerWidget {
               value: percent / 100,
               minHeight: 6,
               backgroundColor: colors.surfaceContainerHighest,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            _resetLabel(subscription.periodResetAt),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant.withValues(alpha: 0.8),
+              fontSize: 11,
             ),
           ),
         ],
